@@ -1,10 +1,14 @@
 package com.mindorks.ridesharing.ui.maps
 
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -14,11 +18,16 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.AutocompleteActivity
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.mindorks.ridesharing.R
 import com.mindorks.ridesharing.data.network.NetworkService
 import com.mindorks.ridesharing.utils.MapUtils
 import com.mindorks.ridesharing.utils.PermissionUtils
 import com.mindorks.ridesharing.utils.ViewUtils
+import kotlinx.android.synthetic.main.activity_maps.*
 
 class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
 
@@ -26,12 +35,16 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
     companion object{
         private var TAG="MapsActivity"
         private var LOCATION_PERMISSION_REQUEST=999
+        private var PICKUP_REQUEST=1
+        private var DROP_REQUEST=2
     }
     private lateinit var mMap: GoogleMap
     private lateinit var presenter: MapsPresenter
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private var currentLatLng: LatLng?=null
+    private var pickUpLatlng: LatLng?=null
+    private var dropAtLatLng: LatLng?=null
     private val nearByCabListmarker= arrayListOf<Marker>()
 
     private fun enableLocationMap(){
@@ -60,6 +73,7 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
                     for(location in p0.locations){
                         if(currentLatLng==null){
                             currentLatLng=LatLng(location.latitude,location.longitude)
+                            setCurrentLocationAsPickUP()
                             enableLocationMap()
                             moveCamera(currentLatLng)
                             animateCamera(currentLatLng)
@@ -81,6 +95,25 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
         mapFragment.getMapAsync(this)
         presenter= MapsPresenter(NetworkService())
         presenter.onAttach(this)
+        setUpClickListener()
+    }
+
+    private fun setUpClickListener() {
+        pickUpTextView.setOnClickListener{
+            launchlocationAutoComplete(PICKUP_REQUEST)
+        }
+        dropTextView.setOnClickListener {
+            launchlocationAutoComplete(DROP_REQUEST)
+        }
+    }
+    private fun launchlocationAutoComplete(requestCode: Int) {
+        val field: List<Place.Field> = listOf(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG)
+        val intent = Autocomplete.IntentBuilder(AutocompleteActivityMode.OVERLAY, field).build(this)
+        startActivityForResult(intent, requestCode)
+    }
+    private fun setCurrentLocationAsPickUP(){
+        pickUpLatlng=currentLatLng
+        pickUpTextView.text="Current Location"
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -132,6 +165,35 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
             }
         }
     }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode== PICKUP_REQUEST || requestCode== DROP_REQUEST){
+            when(resultCode){
+                Activity.RESULT_OK ->{
+                    val place= Autocomplete.getPlaceFromIntent(data!!)
+                    when(requestCode){
+                        PICKUP_REQUEST->{
+                            pickUpTextView.text=place.name
+                            pickUpLatlng=place.latLng
+                        }
+                        DROP_REQUEST->{
+                            dropTextView.text=place.name
+                            dropAtLatLng=place.latLng
+                        }
+                    }
+                }
+                AutocompleteActivity.RESULT_ERROR->{
+                    val status: Status=Autocomplete.getStatusFromIntent(data!!)
+                    Log.d(TAG, status.statusMessage)
+                }
+                Activity.RESULT_CANCELED->{
+
+                }
+            }
+        }
+    }
+
     override fun onDestroy() {
         presenter.onDetach()
         super.onDestroy()
