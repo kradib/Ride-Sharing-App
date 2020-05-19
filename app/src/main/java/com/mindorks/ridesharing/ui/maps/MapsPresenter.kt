@@ -40,14 +40,45 @@ class MapsPresenter(private val networkService: NetworkService):WebSocketListene
     }
 
     override fun onMessage(data: String) {
+        Log.d("data",data)
         var jsonObject=JSONObject(data)
-        when(jsonObject.get(Constants.TYPE)){
+        when(jsonObject.getString(Constants.TYPE)){
             Constants.NEAR_BY_CABS->{
+                Log.d("near by cabs","near by cabs")
                 handleOnmessageNearByCabs(jsonObject)
             }
+            Constants.CAB_BOOKED->{
+                Log.d("Cab booked","Cab booked")
+                view?.informCanBooked()
+            }
+            Constants.PICK_UP_PATH-> {
+                Log.d(TAG, "PICKUP PATH")
+
+                val jsonArray = jsonObject.getJSONArray("path")
+                val pickUpPath = arrayListOf<LatLng>()
+                for (i in 0 until jsonArray.length()) {
+                    val lat = (jsonArray.get(i) as JSONObject).getDouble(Constants.LAT)
+                    val lng = (jsonArray.get(i) as JSONObject).getDouble(Constants.LNG)
+                    val latLng = LatLng(lat, lng)
+                    pickUpPath.add(latLng)
+                    Log.d("mytag", "pickup ${latLng.latitude} ${latLng.longitude}")
+
+                }
+                view?.showPath(pickUpPath)
+            }
+
         }
     }
-
+    fun requestCab(pickupLatLng:LatLng,dropLatLng: LatLng){
+        val jsonObject= JSONObject()
+        Log.d("requesting_cab","requesting_cab")
+        jsonObject.put(Constants.TYPE,Constants.REQUEST_CABS)
+        jsonObject.put("pickUpLat",pickupLatLng.latitude)
+        jsonObject.put("pickUpLng",pickupLatLng.longitude)
+        jsonObject.put("dropLat",dropLatLng.latitude)
+        jsonObject.put("dropLng",dropLatLng.longitude)
+        webSocket.sendMessage(jsonObject.toString())
+    }
     private fun handleOnmessageNearByCabs(jsonObject: JSONObject) {
         var nearBycabLocations= arrayListOf<LatLng>()
         val jsonArray=jsonObject.getJSONArray(Constants.LOCATIONS)

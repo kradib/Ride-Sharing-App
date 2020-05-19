@@ -1,11 +1,14 @@
 package com.mindorks.ridesharing.ui.maps
 
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.common.api.Status
@@ -24,6 +27,7 @@ import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.mindorks.ridesharing.R
 import com.mindorks.ridesharing.data.network.NetworkService
+import com.mindorks.ridesharing.utils.AnimationUtils
 import com.mindorks.ridesharing.utils.MapUtils
 import com.mindorks.ridesharing.utils.PermissionUtils
 import com.mindorks.ridesharing.utils.ViewUtils
@@ -38,6 +42,11 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
         private var PICKUP_REQUEST=1
         private var DROP_REQUEST=2
     }
+
+    private var originMarker: Marker? = null
+    private var destinationMarker: Marker? = null
+    private var blackPolyLine: Polyline? = null
+    private var greyPolyLine: Polyline? = null
     private lateinit var mMap: GoogleMap
     private lateinit var presenter: MapsPresenter
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
@@ -104,6 +113,20 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
         }
         dropTextView.setOnClickListener {
             launchlocationAutoComplete(DROP_REQUEST)
+        }
+        requestCabButton.setOnClickListener{
+            statusTextView.visibility=View.VISIBLE
+            statusTextView.text=getString(R.string.requesting_your_cab)
+            pickUpTextView.isEnabled=false
+            dropTextView.isEnabled=false
+            requestCabButton.isEnabled=false
+            presenter.requestCab(pickUpLatlng!!,dropAtLatLng!!)
+        }
+    }
+    private fun CheckAndRequestCabButton(){
+        if(pickUpLatlng!=null && dropAtLatLng!=null){
+            requestCabButton.visibility= View.VISIBLE
+            requestCabButton.isEnabled=true
         }
     }
     private fun launchlocationAutoComplete(requestCode: Int) {
@@ -176,10 +199,12 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
                         PICKUP_REQUEST->{
                             pickUpTextView.text=place.name
                             pickUpLatlng=place.latLng
+                            CheckAndRequestCabButton()
                         }
                         DROP_REQUEST->{
                             dropTextView.text=place.name
                             dropAtLatLng=place.latLng
+                            CheckAndRequestCabButton()
                         }
                     }
                 }
@@ -205,5 +230,50 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
             val nearBycabMarker=AddCarmarker(latlng)
             nearByCabListmarker.add(nearBycabMarker)
         }
+    }
+
+    override fun informCanBooked() {
+        nearByCabListmarker.forEach { it.remove() }
+        nearByCabListmarker.clear()
+        requestCabButton.visibility = View.GONE
+        statusTextView.text = getString(R.string.your_cab_is_booked)
+
+    }
+
+    override fun showPath(latlnList: List<LatLng>) {
+        val builder = LatLngBounds.Builder()
+        for (latLng in latlnList) {
+            builder.include(latLng)
+        }
+        val bounds = builder.build()
+        mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 2))
+        val polyLineOptions = PolylineOptions()
+        polyLineOptions.color(Color.GRAY)
+        polyLineOptions.width(5f)
+        polyLineOptions.addAll(latlnList)
+        greyPolyLine = mMap.addPolyline(polyLineOptions)
+
+        val blackpolyLineOptions = PolylineOptions()
+        blackpolyLineOptions.color(Color.GRAY)
+        blackpolyLineOptions.width(5f)
+        blackPolyLine = mMap.addPolyline(blackpolyLineOptions)
+
+        originMarker = addOriginDetinationMarkerAndGet(latlnList[0])
+        originMarker?.setAnchor(0.5f, 0.5f)
+        destinationMarker = addOriginDetinationMarkerAndGet(latlnList[latlnList.size - 1])
+        destinationMarker?.setAnchor(0.5f,0.5f)
+        val polyLineAnimator = AnimationUtils.polyLineAnimator()
+        polyLineAnimator.addUpdateListener { valueAnimator ->
+            val percentValue = (valueAnimator.animatedValue as Int)
+            val index = (greyPolyLine?.points!!.size) * (percentValue / 100.0f).toInt()
+            blackPolyLine?.points = greyPolyLine?.points!!.subList(0, index)
+        }
+        polyLineAnimator.start()
+
+    }
+
+    private fun addOriginDetinationMarkerAndGet(latlng: LatLng): Marker {
+        val bitmapDescriptor=BitmapDescriptorFactory.fromBitmap(MapUtils.getDestinationBitmap())
+        return mMap.addMarker(MarkerOptions().position(latlng).flat(true).icon(bitmapDescriptor))
     }
 }

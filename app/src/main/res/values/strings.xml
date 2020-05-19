@@ -2,5 +2,8 @@
     <string name="app_name">RideSharing</string>
     <string name="where_to">Where to?</string>
     <string name="pickup_location">Pickup Location</string>
+    <string name="request_cab">request cab</string>
+    <string name="requesting_your_cab">Requesting your cab</string>
+    <string name="your_cab_is_booked">Your cab is Booked</string>
 
 </resources>
