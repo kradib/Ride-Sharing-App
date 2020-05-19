@@ -323,6 +323,18 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
         statusTextView.text=getString(R.string.your_cab_isArriving)
     }
 
+    override fun informTripEnd() {
+     statusTextView.text=getString(R.string.trip_finished)
+        greyPolyLine?.remove()
+        blackPolyLine?.remove()
+        originMarker?.remove()
+        destinationMarker?.remove()
+    }
+
+    override fun informTripStart() {
+      statusTextView.text=getString(R.string.trip_started)
+        previousLatLngFromServer=null
+    }
     private fun addOriginDetinationMarkerAndGet(latlng: LatLng): Marker {
         val bitmapDescriptor=BitmapDescriptorFactory.fromBitmap(MapUtils.getDestinationBitmap())
         return mMap.addMarker(MarkerOptions().position(latlng).flat(true).icon(bitmapDescriptor))

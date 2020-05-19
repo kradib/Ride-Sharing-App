@@ -51,7 +51,7 @@ class MapsPresenter(private val networkService: NetworkService):WebSocketListene
                 Log.d("Cab booked","Cab booked")
                 view?.informCanBooked()
             }
-            Constants.PICK_UP_PATH-> {
+            Constants.PICK_UP_PATH,Constants.TRIP_PATH-> {
                 Log.d(TAG, "PICKUP PATH")
 
                 val jsonArray = jsonObject.getJSONArray("path")
@@ -76,6 +76,12 @@ class MapsPresenter(private val networkService: NetworkService):WebSocketListene
             }
             Constants.CAB_ARRIVED->{
                 view?.informCabArrived()
+            }
+            Constants.TRIP_START->{
+                view?.informTripStart()
+            }
+            Constants.TRIP_END->{
+                view?.informTripEnd()
             }
 
         }
