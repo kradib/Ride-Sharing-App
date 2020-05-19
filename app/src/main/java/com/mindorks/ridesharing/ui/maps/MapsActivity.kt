@@ -45,6 +45,7 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
 
     private var originMarker: Marker? = null
     private var destinationMarker: Marker? = null
+    private var movingCabMarker: Marker? = null
     private var blackPolyLine: Polyline? = null
     private var greyPolyLine: Polyline? = null
     private lateinit var mMap: GoogleMap
@@ -54,6 +55,8 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
     private var currentLatLng: LatLng?=null
     private var pickUpLatlng: LatLng?=null
     private var dropAtLatLng: LatLng?=null
+    private var previousLatLngFromServer:LatLng?=null
+    private var currentLatLngFromServer: LatLng?=null
     private val nearByCabListmarker= arrayListOf<Marker>()
 
     private fun enableLocationMap(){
@@ -270,6 +273,54 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
         }
         polyLineAnimator.start()
 
+    }
+
+    override fun updateCabLocation(latLng: LatLng) {
+        if(movingCabMarker==null){
+            movingCabMarker=AddCarmarker(latLng)
+        }
+        if(previousLatLngFromServer==null){
+            currentLatLngFromServer=latLng
+            previousLatLngFromServer=currentLatLngFromServer
+            movingCabMarker?.position=currentLatLngFromServer
+            movingCabMarker?.setAnchor(0.5f,0.5f)
+            animateCamera(currentLatLngFromServer)
+        }
+        else{
+            previousLatLngFromServer=currentLatLngFromServer
+            currentLatLngFromServer=latLng
+            val valueAnimator=AnimationUtils.cabAnimator()
+            valueAnimator.addUpdateListener {va->
+                if(currentLatLngFromServer!=null && previousLatLngFromServer!=null){
+                    val multiplier =va.animatedFraction
+                    val nextLocation =LatLng(
+                        multiplier*currentLatLngFromServer!!.latitude+(1-multiplier)*previousLatLngFromServer!!.latitude,
+                        multiplier*currentLatLngFromServer!!.longitude+(1-multiplier)*previousLatLngFromServer!!.longitude
+                    )
+                    movingCabMarker?.position=nextLocation
+                    var rotation=MapUtils.getRotation(previousLatLngFromServer!!,nextLocation)
+                    if(!rotation.isNaN()){
+                        movingCabMarker?.rotation=rotation
+                    }
+                    movingCabMarker?.setAnchor(0.5f,0.5f)
+                    animateCamera(nextLocation)
+                }
+
+            }
+            valueAnimator.start()
+        }
+    }
+
+    override fun informCabArrived() {
+       statusTextView.text=getString(R.string.your_cab_arrived)
+        greyPolyLine?.remove()
+        blackPolyLine?.remove()
+        originMarker?.remove()
+        destinationMarker?.remove()
+    }
+
+    override fun informCabIsArriving() {
+        statusTextView.text=getString(R.string.your_cab_isArriving)
     }
 
     private fun addOriginDetinationMarkerAndGet(latlng: LatLng): Marker {

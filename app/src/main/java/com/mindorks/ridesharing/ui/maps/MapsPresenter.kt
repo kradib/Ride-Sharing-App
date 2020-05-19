@@ -66,6 +66,17 @@ class MapsPresenter(private val networkService: NetworkService):WebSocketListene
                 }
                 view?.showPath(pickUpPath)
             }
+            Constants.LOCATION->{
+                val latCurrent=jsonObject.getDouble("lat")
+                val lngCurrent=jsonObject.getDouble("lng")
+                view?.updateCabLocation(LatLng(latCurrent,lngCurrent))
+            }
+            Constants.CAB_IS_ARRIVING->{
+                view?.informCabIsArriving()
+            }
+            Constants.CAB_ARRIVED->{
+                view?.informCabArrived()
+            }
 
         }
     }

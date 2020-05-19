@@ -6,6 +6,8 @@ object Constants {
     const val NEAR_BY_CABS="nearByCabs"
     const val LOCATIONS="locations"
     const val LOCATION="location"
+    const val CAB_IS_ARRIVING="cabIsArriving"
+    const val CAB_ARRIVED="cabArrived"
     const val LAT="lat"
     const val CAB_BOOKED="cabBooked"
     const val PICK_UP_PATH="pickUpPath"
