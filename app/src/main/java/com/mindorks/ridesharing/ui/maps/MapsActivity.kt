@@ -125,6 +125,41 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
             requestCabButton.isEnabled=false
             presenter.requestCab(pickUpLatlng!!,dropAtLatLng!!)
         }
+        nextRideButton.setOnClickListener {
+            reset()
+        }
+    }
+    private fun reset(){
+        statusTextView.visibility=View.GONE
+        nextRideButton.visibility=View.GONE
+        nearByCabListmarker.forEach { it.remove() }
+        nearByCabListmarker.clear()
+        currentLatLngFromServer=null
+        previousLatLngFromServer=null
+        if(currentLatLng!=null){
+            moveCamera(currentLatLng)
+            animateCamera(currentLatLng)
+            setCurrentLocationAsPickUP()
+            presenter.requestNearByCabs(currentLatLng!!)
+
+        }
+        else{
+            pickUpTextView.text=""
+        }
+        pickUpTextView.isEnabled=true
+        dropTextView.isEnabled=true
+        dropTextView.text=""
+        movingCabMarker?.remove()
+        blackPolyLine?.remove()
+        greyPolyLine?.remove()
+        originMarker?.remove()
+        destinationMarker?.remove()
+        dropAtLatLng=null
+        blackPolyLine=null
+        greyPolyLine=null
+        originMarker=null
+        destinationMarker=null
+        movingCabMarker=null
     }
     private fun CheckAndRequestCabButton(){
         if(pickUpLatlng!=null && dropAtLatLng!=null){
@@ -224,9 +259,19 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
 
     override fun onDestroy() {
         presenter.onDetach()
+        fusedLocationProviderClient?.removeLocationUpdates(locationCallback)
         super.onDestroy()
     }
 
+    override fun showDirectionApiFailedError(error: String) {
+        Toast.makeText(this,error,Toast.LENGTH_SHORT).show()
+        reset()
+    }
+
+    override fun showRoutesNotAvailableError() {
+        val error="Route not found"
+        Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
+    }
     override fun ShowNearByCabs(LatLngList: List<LatLng>) {
         nearByCabListmarker.clear()
         for (latlng in LatLngList){
@@ -325,6 +370,7 @@ class MapsActivity : AppCompatActivity(),MapsView, OnMapReadyCallback {
 
     override fun informTripEnd() {
      statusTextView.text=getString(R.string.trip_finished)
+        nextRideButton.visibility=View.VISIBLE
         greyPolyLine?.remove()
         blackPolyLine?.remove()
         originMarker?.remove()
